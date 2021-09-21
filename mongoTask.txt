@@ -1,0 +1,113 @@
+db.authors.aggregate([
+  {
+    $lookup:{
+      from:'books',
+      localField:'_id',
+      foreignField:'authorID',
+      as:'books'
+    }
+  },
+  {
+    $unwind: '$books'
+  },
+  {
+    $lookup:{
+      from:'publishers',
+      localField:'books.publisherID',
+      foreignField:'_id',
+      as:'publishers'
+    }
+  },
+  {
+    $unwind:'$publishers'
+  },
+  {
+    $group:{
+      _id:{$concat:["$firstName"," ","$lastName"]},
+      number_of_books:{$sum:1},
+      list_of_books:{$push: {$concat:"$books.title",'(','$publishers.publisherName',')']}}
+    }
+  }
+])
+
+db.books.aggregate(
+  [
+    {
+      $project:
+      {
+        id:1,
+        title:1,
+        price:1,
+        promo:
+        {
+          $switch:{
+            branches:[
+              {case: {$lt: ["$price",60000]}, then:"1%"},
+              {case: {$lt: ["$price", 90000]}, then:"2%"},
+              {case: {$gt: ["$price", 90000]}, then:"3%"}
+            ]
+          }
+        }
+      }
+    }
+  ]
+)
+
+db.books.aggregate([
+  {
+    $lookup:{
+      from:'authors',
+      localField:'authorID',
+      foreignField:'_id',
+      as:'author'
+    }
+  },
+  {
+    $unwind:"$author"
+  },
+  {
+    $lookup:{
+      from:'publishers',
+      localField:'publisherID',
+      foreignField:'_id',
+      as:'publisher'
+    }
+  },
+  {
+    $unwind:"$publisher"
+  },
+  {
+    $project:{
+      title:1,
+      price:1,
+      author:"$author.firstName",
+      publisher:"$publisher.publisherName"
+    }
+  },
+  {$sort: {price: -1}}
+])
+
+db.books.aggregate([
+  {
+    $match:{$or: [{_id:3}, {_id:4}]}
+  },
+  {
+    $lookup:{
+      from:'publishers',
+      localField:'publisherID',
+      foreignField:'_id',
+      as:'publisher'
+    }
+  },
+  {
+    $unwind:"$publisher"
+  },
+  {
+    $project:{
+      id:1,
+      title:1,
+      price:1,
+      publisher:"$publisher.publisherName"
+    }
+  }
+])
